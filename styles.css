@@ -27,3 +27,17 @@
 	height: 100px;
 	background-color: gray;
 }
+
+#moon {
+	position: absolute;
+	cursor: pointer;
+	margin: auto;
+	top: 0;
+	right: 0px;
+	width: 20px;
+	height: 20px;
+	background-color: transparent;
+	border-radius: 50%;
+	box-shadow: inset -5px -2px 0px 0px #fff;
+}
+

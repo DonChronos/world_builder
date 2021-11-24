@@ -15,17 +15,10 @@ document.getElementById('download').addEventListener('click', async () => {
  await download(jsonData, 'json.txt', 'text/plain'); 
 })
 
-document.getElementById('toggle-dark-mode').addEventListener('click', async () => {
+document.getElementById('moon').addEventListener('click', async () => {
   const isDarkMode = await window.darkMode.toggle()
-  document.getElementById('theme-source').innerHTML = isDarkMode ? 'Dark' : 
-'Light'
 })
 
-document.getElementById('reset-to-system').addEventListener('click', async () => 
-{
-  await window.darkMode.system()
-  document.getElementById('theme-source').innerHTML = 'System'
-})
 
 const fileSelector = document.getElementById('file-selector');
 fileSelector.addEventListener('change', event => {

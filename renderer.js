@@ -27,6 +27,42 @@ document.getElementById('reset-to-system').addEventListener('click', async () =>
   document.getElementById('theme-source').innerHTML = 'System'
 })
 
+const fileSelector = document.getElementById('file-selector');
+fileSelector.addEventListener('change', event => {
+	const fileList = event.target.files;
+	console.log(fileList);
+	console.log(fileList[0]);
+	readFile(fileList[0]);
+});
+
+const dropArea = document.getElementById('drop-area');
+dropArea.addEventListener('dragover', event => {
+	event.stopPropagation();
+	event.preventDefault();
+	event.dataTransfer.dropEffect = 'copy';
+});
+dropArea.addEventListener('drop', event => {
+	event.stopPropagation();
+	event.preventDefault();
+	const fileList = event.dataTransfer.files;
+	console.log(fileList);
+	readFile(fileList[0]);
+});
+
+function readFile(file) {
+	if (file.type && !file.type.startsWith('text/')) {
+		console.log('File is not text', file.type, file);
+		return;
+	}
+	const reader = new FileReader();
+	const test = document.getElementById('test');
+	reader.addEventListener('load', event => {
+		console.log(event.target.result);
+		test.innerText = event.target.result;
+	});
+	reader.readAsText(file);
+}
+
 dragElement(document.getElementById("mydiv"));
 
 function dragElement(elem) {

@@ -1,4 +1,31 @@
-var data = {
+const RTK = window.RTK;
+const addTab = RTK.createAction("ADD_TAB");
+const removeTab = RTK.createAction("REMOVE_TAB");
+const renameTab = RTK.createAction("RENAME_TAB");
+const initialState = {
+	name: "test",
+	tabs: [ ],
+	activeTab: "",
+};
+
+// since you can't change place of tabs, send payload of order
+const tabs = RTK.createReducer(initialState, (builder) => {
+	builder
+		.addCase('ADD_TAB', (state, action) => {
+			state.tabs.push({ name: action.payload, blocks: [], connections: [] });
+		})
+		.addCase('REMOVE_TAB', (state, action) => {
+			state.tabs.splice(action.payload, 1);
+		})
+		.addCase('RENAME_TAB', (state, action) => {
+			state.tabs[action.payload.number].name = action.payload.name;
+		})
+});
+const store = RTK.configureStore({ reducer: tabs });
+const test = store.getState();
+console.log(test);
+
+/* var data = {
 	a: "123",
 	b: "test"
 }
@@ -14,7 +41,7 @@ function download(content, fileName, contentType) {
 document.getElementById('download').addEventListener('click', async () => {
  await download(jsonData, 'json.txt', 'text/plain');
 })
-
+*/
 document.getElementById('moon').addEventListener('click', async () => {
   const isDarkMode = await window.darkMode.toggle()
 })
@@ -57,24 +84,43 @@ function readFile(file) {
 	reader.readAsText(file);
 }
 
-dragElement(document.getElementById("mydiv"));
 
 const header = document.getElementById('header');
 const add_tab = document.getElementById('add_tab');
+let tabNumber = 0;
 add_tab.addEventListener('click', event => {
 	let newTab = document.createElement('div');
 	let newTabDiv = document.createElement('div');
 	let newTabClose = document.createElement('button');
+	let newTabName = document.createTextNode('Name');
 	let newTabCloseX = document.createTextNode('X');
-	newTabClose.innerHTML = newTabCloseX;
+	newTabDiv.appendChild(newTabName);
+	newTabClose.appendChild(newTabCloseX);
 	newTabDiv.setAttribute('contentEditable', 'true');
+	newTabDiv.addEventListener('keydown', event => {
+		if (event.key === "Enter") {
+			event.preventDefault();
+			newTabDiv.setAttribute('contentEditable', 'false');
+			console.log(event);
+			// event.target.innerText
+		}
+	})
 	newTabDiv.style.display = 'inline-block';
-	newTabClose.addEventListener('click', event => newTab.remove());
-	header.prepend(newTab);
+	newTabClose.addEventListener('click', event => {
+		console.log(event);
+		console.log(tabNumber);
+		tabNumber--;
+		newTab.remove()
+	});
+	add_tab.before(newTab);
 	newTab.prepend(newTabDiv);
 	newTab.append(newTabClose);
+	addTab("Name");
+	tabNumber++;
+	console.log(tabNumber);
 });
 
+dragElement(document.getElementById("mydiv"));
 function dragElement(elem) {
 	var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
 	if (document.getElementById(elem.id + "header")) {

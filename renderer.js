@@ -2,6 +2,7 @@ const RTK = window.RTK;
 const addTab = RTK.createAction("ADD_TAB");
 const removeTab = RTK.createAction("REMOVE_TAB");
 const renameTab = RTK.createAction("RENAME_TAB");
+const changeTabNumber = RTK.createAction("CHANGE_TAB_NUMBER")
 const initialState = {
 	name: "test",
 	tabs: [ ],
@@ -9,24 +10,39 @@ const initialState = {
 };
 
 // since you can't change place of tabs, send payload of order
+// have to use filter
 const tabs = RTK.createReducer(initialState, (builder) => {
 	builder
 		.addCase('ADD_TAB', (state, action) => {
-			state.tabs.push({ name: action.payload, blocks: [], connections: [] });
-			console.log(state);
+			console.log(action);
+			let testTab = {
+				id: action.payload.id,
+				name: action.payload.name,
+				blocks: [],
+				connections: [],
+			};
+			console.log('before', RTK.current(state));
+			state.tabs.push(testTab);
+			console.log('after', RTK.current(state));
 		})
 		.addCase('REMOVE_TAB', (state, action) => {
-			state.tabs.splice(action.payload, 1);
-			console.log(state);
+			console.log(action);
+			console.log('before', RTK.current(state));
+			let foundIndex = state.tabs.findIndex(tab => tab.id === action.payload);
+			state.tabs.splice(foundIndex, 1);
+			console.log('after', RTK.current(state));
 		})
 		.addCase('RENAME_TAB', (state, action) => {
-			state.tabs[action.payload.id].name = action.payload.name;
-			console.log(state);
+			console.log(action.payload);
+			console.log(RTK.current(state.tabs));
+			console.log('before', RTK.current(state));
+			let found = state.tabs.find(tab => tab.id === action.payload.id);
+			found.name = action.payload.name;
+			console.log('after', RTK.current(state));
 		})
 });
 const store = RTK.configureStore({ reducer: tabs });
-const test = store.getState();
-console.log(test);
+// const test = store.getState();
 
 /* var data = {
 	a: "123",
@@ -90,8 +106,8 @@ function readFile(file) {
 
 const header = document.getElementById('header');
 const add_tab = document.getElementById('add_tab');
-let tabNumber = 0;
 add_tab.addEventListener('click', event => {
+	let id = uuidv4();
 	let newTab = document.createElement('div');
 	let newTabDiv = document.createElement('div');
 	let newTabClose = document.createElement('button');
@@ -104,27 +120,18 @@ add_tab.addEventListener('click', event => {
 		if (event.key === "Enter") {
 			event.preventDefault();
 			newTabDiv.setAttribute('contentEditable', 'false');
-			console.log(event);
-			renameTab({ id: tabNumber, name: event.target.innerText })
-			console.log(test);
+			store.dispatch(renameTab({ id: id, name: event.target.innerText }));
 		}
 	})
 	newTabDiv.style.display = 'inline-block';
 	newTabClose.addEventListener('click', event => {
-		console.log(event);
-		console.log(tabNumber);
-		tabNumber--;
+		store.dispatch(removeTab(id));
 		newTab.remove();
-		removeTab(tabNumber);
-		console.log(test);
 	});
 	add_tab.before(newTab);
 	newTab.prepend(newTabDiv);
 	newTab.append(newTabClose);
-	console.log(addTab("Name"));
-	tabNumber++;
-	console.log(tabNumber);
-	console.log(test);
+	store.dispatch(addTab({ id: id, name: "Name" }));
 });
 
 dragElement(document.getElementById("mydiv"));

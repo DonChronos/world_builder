@@ -7,6 +7,8 @@ const createWindow = () => {
     heigth: 600,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
+      // nodeIntegration: true,
+      // contextIsolation: false
       // devTools: false
       }
   })
@@ -24,7 +26,7 @@ const createWindow = () => {
 }
 
 app.whenReady().then(() => {
-  createWindow()
+  createWindow();
 
   app.on('activate', () => {
     if (Browser.Window.getAllWindows().length === 0) createWindow()

@@ -134,37 +134,29 @@ add_tab.addEventListener('click', event => {
 	store.dispatch(addTab({ id: id, name: "Name" }));
 });
 
-dragElement(document.getElementById("mydiv"));
-function dragElement(elem) {
-	var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-	if (document.getElementById(elem.id + "header")) {
-		document.getElementById(elem.id + "header").onmousedown = dragMouseDown;
-	} else {
-		elem.onmousedown = dragMouseDown;
-	}
-
-	function dragMouseDown(e) {
-		e = e || window.event;
-		e.preventDefault();
-		pos3 = e.clientX;
-		pos4 = e.clientY;
-		document.onmouseup = closeDragElement;
-		document.onmousemove = elementDrag;
-	}
-
-	function elementDrag(e) {
-		e = e || window.event;
-		e.preventDefault();
-		pos1 = pos3 - e.clientX;
-		pos2 = pos4 - e.clientY;
-		pos3 = e.clientX;
-		pos4 = e.clientY;
-		elem.style.top = (elem.offsetTop - pos2) + "px";
-		elem.style.left = (elem.offsetLeft - pos1) + "px";
-	}
-
-	function closeDragElement() {
-		document.onmouseup = null;
-		document.onmousemove = null;
-	}
-}
+const add_grabbable = document.getElementById("add_grabbable");
+add_grabbable.addEventListener('click', event => {
+	let newGrabbable = document.createElement('div');
+	let newGrabbableHeader = document.createElement('div');
+	let newGrabbableP = document.createElement('p');
+	let newHeaderText = document.createTextNode('Click here to move');
+	let newPText = document.createTextNode('Move');
+	newGrabbableHeader.appendChild(newHeaderText);
+	newGrabbableP.appendChild(newPText);
+	newGrabbableP.setAttribute('contentEditable', 'true');
+	newGrabbableHeader.setAttribute('contentEditable', 'true');
+	newGrabbableHeader.addEventListener('keydown', event => {
+		if (event.key === "Enter") {
+			event.preventDefault();
+			newGrabbableHeader.setAttribute('contentEditable', 'false');
+		}
+	})
+	newGrabbable.classList.add('grabbable');
+	newGrabbableHeader.classList.add('grabbable_header');
+	newGrabbable.prepend(newGrabbableHeader);
+	newGrabbable.append(newGrabbableP);
+	add_grabbable.after(newGrabbable);
+	draggable = new PlainDraggable(newGrabbable);
+	draggable.handle = newGrabbableHeader;
+	draggable.containment = window;
+});

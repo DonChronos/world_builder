@@ -13,12 +13,15 @@ const tabs = RTK.createReducer(initialState, (builder) => {
 	builder
 		.addCase('ADD_TAB', (state, action) => {
 			state.tabs.push({ name: action.payload, blocks: [], connections: [] });
+			console.log(state);
 		})
 		.addCase('REMOVE_TAB', (state, action) => {
 			state.tabs.splice(action.payload, 1);
+			console.log(state);
 		})
 		.addCase('RENAME_TAB', (state, action) => {
-			state.tabs[action.payload.number].name = action.payload.name;
+			state.tabs[action.payload.id].name = action.payload.name;
+			console.log(state);
 		})
 });
 const store = RTK.configureStore({ reducer: tabs });
@@ -102,7 +105,8 @@ add_tab.addEventListener('click', event => {
 			event.preventDefault();
 			newTabDiv.setAttribute('contentEditable', 'false');
 			console.log(event);
-			// event.target.innerText
+			renameTab({ id: tabNumber, name: event.target.innerText })
+			console.log(test);
 		}
 	})
 	newTabDiv.style.display = 'inline-block';
@@ -110,14 +114,17 @@ add_tab.addEventListener('click', event => {
 		console.log(event);
 		console.log(tabNumber);
 		tabNumber--;
-		newTab.remove()
+		newTab.remove();
+		removeTab(tabNumber);
+		console.log(test);
 	});
 	add_tab.before(newTab);
 	newTab.prepend(newTabDiv);
 	newTab.append(newTabClose);
-	addTab("Name");
+	console.log(addTab("Name"));
 	tabNumber++;
 	console.log(tabNumber);
+	console.log(test);
 });
 
 dragElement(document.getElementById("mydiv"));

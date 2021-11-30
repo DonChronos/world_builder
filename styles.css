@@ -29,6 +29,10 @@ body {
   height: 30px;
 }
 
+.hidden {
+  visibility: hidden;
+}
+
 .grabbable {
 	position: absolute;
 	z-index: 9;

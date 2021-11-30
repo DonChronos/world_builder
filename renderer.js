@@ -9,8 +9,7 @@ const initialState = {
 	activeTab: "",
 };
 
-// since you can't change place of tabs, send payload of order
-// have to use filter
+// on switch tab destroy blocks of old tab and show blocks of active tab
 const tabs = RTK.createReducer(initialState, (builder) => {
 	builder
 		.addCase('ADD_TAB', (state, action) => {
@@ -38,6 +37,12 @@ const tabs = RTK.createReducer(initialState, (builder) => {
 			console.log('before', RTK.current(state));
 			let found = state.tabs.find(tab => tab.id === action.payload.id);
 			found.name = action.payload.name;
+			console.log('after', RTK.current(state));
+		})
+		.addCase('SWITCH_TAB', (state, action) => {
+			console.log(action.payload);
+			console.log('before', RTK.current(state));
+			state.activeTab = action.payload;
 			console.log('after', RTK.current(state));
 		})
 });
@@ -104,6 +109,7 @@ function readFile(file) {
 }
 
 
+const add_grabbable = document.getElementById("add_grabbable");
 const header = document.getElementById('header');
 const add_tab = document.getElementById('add_tab');
 add_tab.addEventListener('click', event => {
@@ -127,36 +133,61 @@ add_tab.addEventListener('click', event => {
 	newTabClose.addEventListener('click', event => {
 		store.dispatch(removeTab(id));
 		newTab.remove();
+		// if no tabs left, make add_grabbable hidden
+		// add_grabbable.classList.add('hidden');
 	});
 	add_tab.before(newTab);
 	newTab.prepend(newTabDiv);
 	newTab.append(newTabClose);
 	store.dispatch(addTab({ id: id, name: "Name" }));
+	add_grabbable.classList.remove('hidden');
 });
 
-const add_grabbable = document.getElementById("add_grabbable");
+let start = null;
+let end = null;
 add_grabbable.addEventListener('click', event => {
 	let newGrabbable = document.createElement('div');
 	let newGrabbableHeader = document.createElement('div');
 	let newGrabbableP = document.createElement('p');
+	let newAddLine = document.createElement('button');
 	let newHeaderText = document.createTextNode('Click here to move');
 	let newPText = document.createTextNode('Move');
+	let newLineText = document.createTextNode('→');
 	newGrabbableHeader.appendChild(newHeaderText);
 	newGrabbableP.appendChild(newPText);
+	newAddLine.appendChild(newLineText);
 	newGrabbableP.setAttribute('contentEditable', 'true');
+	/* newGrabbableP.addEventListener('focusout', event => {
+		send redux action
+	})
+	*/
 	newGrabbableHeader.setAttribute('contentEditable', 'true');
 	newGrabbableHeader.addEventListener('keydown', event => {
 		if (event.key === "Enter") {
 			event.preventDefault();
 			newGrabbableHeader.setAttribute('contentEditable', 'false');
+			// send redux action
 		}
-	})
+	});
 	newGrabbable.classList.add('grabbable');
 	newGrabbableHeader.classList.add('grabbable_header');
 	newGrabbable.prepend(newGrabbableHeader);
 	newGrabbable.append(newGrabbableP);
+	newGrabbable.append(newAddLine);
 	add_grabbable.after(newGrabbable);
 	draggable = new PlainDraggable(newGrabbable);
 	draggable.handle = newGrabbableHeader;
-	draggable.containment = window;
+	draggable.containment = {left: 0, top: 30, width: '100%', height: '100%'};
+	// add draggable lead line positioning on move
+	// make editable labels
+	newAddLine.addEventListener('click', event => {
+		if (!start && !end) {
+			start = newGrabbable;
+		} else if (start !== newGrabbable && !end) {
+			end = newGrabbable;
+			let line = new LeaderLine(start, end);
+			start = null;
+			end = null;
+		}
+	});
 });

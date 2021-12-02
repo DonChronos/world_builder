@@ -2,18 +2,24 @@ const RTK = window.RTK;
 const addTab = RTK.createAction("ADD_TAB");
 const removeTab = RTK.createAction("REMOVE_TAB");
 const renameTab = RTK.createAction("RENAME_TAB");
-const changeTabNumber = RTK.createAction("CHANGE_TAB_NUMBER")
+const switchTab = RTK.createAction("SWITCH_TAB")
+const addConnection = RTK.createAction("ADD_CONNECTION");
 const initialState = {
 	name: "test",
 	tabs: [ ],
 	activeTab: "",
 };
 
+
 // on switch tab destroy blocks of old tab and show blocks of active tab
+// hack of a fix - instead of deleting divs of inactive tabs, just hide them
+// switch tabs by ctrl+1,+2 etc.
 const tabs = RTK.createReducer(initialState, (builder) => {
 	builder
 		.addCase('ADD_TAB', (state, action) => {
 			console.log(action);
+			if (state.tabs.length === 0) state.activeTab = action.payload.id;
+			// if (state.tabs.length === 8) return;
 			let testTab = {
 				id: action.payload.id,
 				name: action.payload.name,
@@ -22,11 +28,14 @@ const tabs = RTK.createReducer(initialState, (builder) => {
 			};
 			console.log('before', RTK.current(state));
 			state.tabs.push(testTab);
+			// change css of active tab
 			console.log('after', RTK.current(state));
 		})
 		.addCase('REMOVE_TAB', (state, action) => {
 			console.log(action);
 			console.log('before', RTK.current(state));
+			// check for active tab
+			// if no tabs left, do something
 			let foundIndex = state.tabs.findIndex(tab => tab.id === action.payload);
 			state.tabs.splice(foundIndex, 1);
 			console.log('after', RTK.current(state));
@@ -42,7 +51,20 @@ const tabs = RTK.createReducer(initialState, (builder) => {
 		.addCase('SWITCH_TAB', (state, action) => {
 			console.log(action.payload);
 			console.log('before', RTK.current(state));
-			state.activeTab = action.payload;
+			let newIndex = action.payload;
+			let oldIndex = state.tabs.findIndex(tab => tab.id === state.activeTab);
+			if (newIndex === oldIndex) return;
+			state.tabs[oldIndex].connections.forEach(con => con.hide());
+			let newTabId = state.tabs[newIndex].id;
+			state.activeTab = newTabId;
+			state.tabs[newIndex].connections.forEach(con => con.show());
+			console.log('after', RTK.current(state));
+		})
+		.addCase('ADD_CONNECTION', (state, action) => {
+			console.log(action.payload);
+			console.log('before', RTK.current(state));
+			let foundIndex = state.tabs.findIndex(tab => tab.id === state.activeTab);
+			state.tabs[foundIndex].connections.push(action.payload);
 			console.log('after', RTK.current(state));
 		})
 });
@@ -110,6 +132,8 @@ function readFile(file) {
 
 
 const add_grabbable = document.getElementById("add_grabbable");
+
+// ADD TAB //
 const header = document.getElementById('header');
 const add_tab = document.getElementById('add_tab');
 add_tab.addEventListener('click', event => {
@@ -143,12 +167,24 @@ add_tab.addEventListener('click', event => {
 	add_grabbable.classList.remove('hidden');
 });
 
+// SWITCH TABS by capturing CTRL+NUMBER //
+document.addEventListener('keydown', event => {
+	if (event.ctrlKey && event.keyCode >= 48 && event.keyCode <= 57) {
+		console.log(event.key);
+		let state = store.getState();
+		if (state.tabs.length === 0) return;
+		store.dispatch(switchTab(event.keyCode - 49))
+	};
+});
+
+// ADD GRABBABLE //
 let start = null;
 let end = null;
 add_grabbable.addEventListener('click', event => {
 	let newGrabbable = document.createElement('div');
 	let newGrabbableHeader = document.createElement('div');
 	let newGrabbableP = document.createElement('p');
+	// if p is too big, shorten it. on focus show all
 	let newAddLine = document.createElement('button');
 	let newHeaderText = document.createTextNode('Click here to move');
 	let newPText = document.createTextNode('Move');
@@ -178,6 +214,8 @@ add_grabbable.addEventListener('click', event => {
 	draggable = new PlainDraggable(newGrabbable);
 	draggable.handle = newGrabbableHeader;
 	draggable.containment = {left: 0, top: 30, width: '100%', height: '100%'};
+	console.log(newGrabbable);
+	console.log(draggable);
 	// add draggable lead line positioning on move
 	// make editable labels
 	newAddLine.addEventListener('click', event => {
@@ -186,6 +224,8 @@ add_grabbable.addEventListener('click', event => {
 		} else if (start !== newGrabbable && !end) {
 			end = newGrabbable;
 			let line = new LeaderLine(start, end);
+			// adding non-serializable value to state; rework if possible
+			store.dispatch(addConnection(line));
 			start = null;
 			end = null;
 		}

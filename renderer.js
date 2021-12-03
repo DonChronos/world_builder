@@ -3,7 +3,10 @@ const addTab = RTK.createAction("ADD_TAB");
 const removeTab = RTK.createAction("REMOVE_TAB");
 const renameTab = RTK.createAction("RENAME_TAB");
 const switchTab = RTK.createAction("SWITCH_TAB")
+const addBlock = RTK.createAction("ADD_BLOCK");
 const addConnection = RTK.createAction("ADD_CONNECTION");
+const loadStore = RTK.createAction("LOAD_STORE");
+const saveStore = RTK.createAction("SAVE_STORE");
 const initialState = {
 	name: "test",
 	tabs: [ ],
@@ -67,6 +70,54 @@ const tabs = RTK.createReducer(initialState, (builder) => {
 			state.tabs[foundIndex].connections.push(action.payload);
 			console.log('after', RTK.current(state));
 		})
+		.addCase('ADD_BLOCK', (state, action) => {
+			console.log(action.payload);
+			console.log('before', RTK.current(state));
+			let foundIndex = state.tabs.findIndex(tab => tab.id === state.activeTab);
+			console.log(foundIndex);
+			console.log(state.tabs[foundIndex]);
+			state.tabs[foundIndex].blocks.push(action.payload);
+			console.log('after', RTK.current(state));
+		})
+		.addCase('LOAD_STORE', (state, action) => {
+			console.log(action.payload);
+			console.log('before', RTK.current(state));
+			state = action.payload;
+			console.log('after', RTK.current(state));
+		})
+		.addCase('SAVE_STORE', (state, action) => {
+			console.log(action.payload);
+			console.log('before', RTK.current(state));
+			let tabs = state.tabs;
+			console.log(tabs);
+			let blocks = tabs[0].blocks;
+			console.log(blocks);
+			// connections
+			let connections = tabs[0].connections;
+			// should add if names are editable or not
+			// should also add if block headers are editable or not
+			// the connection's start and end are blocks' IDs
+			state.data = {
+				name: state.name,
+				tabs: [
+					{
+					id: tabs[0].id,
+					name: tabs[0].name,
+					blocks: blocks,
+					connections: [
+						{
+							start: tabs[0].connections[0].start.id,
+							end: tabs[0].connections[0].end.id
+						},
+						{}
+					]
+					},
+					{}
+				],
+				activeTab: state.activeTab
+			};
+			console.log('after', RTK.current(state));
+		})
 });
 const store = RTK.configureStore({ reducer: tabs });
 // const test = store.getState();
@@ -76,6 +127,7 @@ const store = RTK.configureStore({ reducer: tabs });
 	b: "test"
 }
 var jsonData = JSON.stringify(data);
+*/
 function download(content, fileName, contentType) {
 	var a = document.createElement("a");
 	var file = new Blob([content], {type: contentType});
@@ -85,9 +137,16 @@ function download(content, fileName, contentType) {
 	URL.revokeObjectURL(a.href);
 }
 document.getElementById('download').addEventListener('click', async () => {
- await download(jsonData, 'json.txt', 'text/plain');
-})
-*/
+	let storeRaw = store.getState();
+	console.log(storeRaw);
+	console.log(storeRaw.tabs[0].blocks);
+	console.log(storeRaw.tabs[0].blocks[0].id); // block's id
+	console.log(storeRaw.tabs[0].blocks[0].children[0]); // header, extract innerHTML and if editable
+	console.log(storeRaw.tabs[0].blocks[0].children[1]); // p, extract innerHTML
+	store.dispatch(saveStore());
+	// await download(storeFile, 'json.txt', 'text/plain');
+});
+
 document.getElementById('moon').addEventListener('click', async () => {
   const isDarkMode = await window.darkMode.toggle()
 })
@@ -180,6 +239,7 @@ document.addEventListener('keydown', event => {
 // ADD GRABBABLE //
 let start = null;
 let end = null;
+let grabbable_id = 0;
 add_grabbable.addEventListener('click', event => {
 	let newGrabbable = document.createElement('div');
 	let newGrabbableHeader = document.createElement('div');
@@ -216,6 +276,7 @@ add_grabbable.addEventListener('click', event => {
 	draggable.containment = {left: 0, top: 30, width: '100%', height: '100%'};
 	console.log(newGrabbable);
 	console.log(draggable);
+
 	// add draggable lead line positioning on move
 	// make editable labels
 	newAddLine.addEventListener('click', event => {
@@ -230,4 +291,7 @@ add_grabbable.addEventListener('click', event => {
 			end = null;
 		}
 	});
+	newGrabbable.id = grabbable_id;
+	grabbable_id++;
+	store.dispatch(addBlock(newGrabbable));
 });

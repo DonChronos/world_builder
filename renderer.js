@@ -7,22 +7,19 @@ const addBlock = RTK.createAction("ADD_BLOCK");
 const addConnection = RTK.createAction("ADD_CONNECTION");
 const loadStore = RTK.createAction("LOAD_STORE");
 const saveStore = RTK.createAction("SAVE_STORE");
+const increaseBlockId = RTK.createAction("INCREASE_BLOCK_ID");
 const initialState = {
 	name: "test",
 	tabs: [ ],
 	activeTab: "",
+	blockId: 0,
 };
 
-
-// on switch tab destroy blocks of old tab and show blocks of active tab
-// hack of a fix - instead of deleting divs of inactive tabs, just hide them
-// switch tabs by ctrl+1,+2 etc.
 const tabs = RTK.createReducer(initialState, (builder) => {
 	builder
 		.addCase('ADD_TAB', (state, action) => {
 			console.log(action);
 			if (state.tabs.length === 0) state.activeTab = action.payload.id;
-			// if (state.tabs.length === 8) return;
 			let testTab = {
 				id: action.payload.id,
 				name: action.payload.name,
@@ -38,7 +35,7 @@ const tabs = RTK.createReducer(initialState, (builder) => {
 			console.log(action);
 			console.log('before', RTK.current(state));
 			// check for active tab
-			// if no tabs left, do something
+			// if no tabs left, do something (hide 'add block' button)
 			let foundIndex = state.tabs.findIndex(tab => tab.id === action.payload);
 			state.tabs.splice(foundIndex, 1);
 			console.log('after', RTK.current(state));
@@ -58,9 +55,11 @@ const tabs = RTK.createReducer(initialState, (builder) => {
 			let oldIndex = state.tabs.findIndex(tab => tab.id === state.activeTab);
 			if (newIndex === oldIndex) return;
 			state.tabs[oldIndex].connections.forEach(con => con.hide());
+			state.tabs[oldIndex].blocks.forEach(block => block.classList.toggle('hidden'));
 			let newTabId = state.tabs[newIndex].id;
 			state.activeTab = newTabId;
 			state.tabs[newIndex].connections.forEach(con => con.show());
+			state.tabs[newIndex].blocks.forEach(block => block.classList.toggle('hidden'));
 			console.log('after', RTK.current(state));
 		})
 		.addCase('ADD_CONNECTION', (state, action) => {
@@ -82,41 +81,45 @@ const tabs = RTK.createReducer(initialState, (builder) => {
 		.addCase('LOAD_STORE', (state, action) => {
 			console.log(action.payload);
 			console.log('before', RTK.current(state));
-			state = action.payload;
-			console.log('after', RTK.current(state));
+			return action.payload;
 		})
 		.addCase('SAVE_STORE', (state, action) => {
 			console.log(action.payload);
 			console.log('before', RTK.current(state));
 			let tabs = state.tabs;
-			console.log(tabs);
-			let blocks = tabs[0].blocks;
-			console.log(blocks);
-			// connections
-			let connections = tabs[0].connections;
-			// should add if names are editable or not
-			// should also add if block headers are editable or not
-			// the connection's start and end are blocks' IDs
+			let data_tabs = tabs.map(tab => {
+				let connections = tab.connections.map(con => {
+					return {
+						start: con.start.id,
+						end: con.end.id
+					}
+				}) || [];
+				let blocks = tab.blocks.map(block => {
+					return {
+						id: block.id,
+						transform: block.style.transform,
+						headerText: block.children[0].innerHTML,
+						headerEditable: block.children[0].contentEditable,
+						pText: block.children[1].innerHTML
+					}
+				}) || [];
+				return {
+					id: tab.id,
+					name: tab.name,
+					blocks: blocks,
+					connections: connections,
+				}
+			});
 			state.data = {
 				name: state.name,
-				tabs: [
-					{
-					id: tabs[0].id,
-					name: tabs[0].name,
-					blocks: blocks,
-					connections: [
-						{
-							start: tabs[0].connections[0].start.id,
-							end: tabs[0].connections[0].end.id
-						},
-						{}
-					]
-					},
-					{}
-				],
-				activeTab: state.activeTab
+				tabs: data_tabs,
+				activeTab: state.activeTab,
+				blockId: state.blockId
 			};
 			console.log('after', RTK.current(state));
+		})
+		.addCase('INCREASE_BLOCK_ID', (state, action) => {
+			state.blockId++
 		})
 });
 const store = RTK.configureStore({ reducer: tabs });
@@ -137,14 +140,9 @@ function download(content, fileName, contentType) {
 	URL.revokeObjectURL(a.href);
 }
 document.getElementById('download').addEventListener('click', async () => {
-	let storeRaw = store.getState();
-	console.log(storeRaw);
-	console.log(storeRaw.tabs[0].blocks);
-	console.log(storeRaw.tabs[0].blocks[0].id); // block's id
-	console.log(storeRaw.tabs[0].blocks[0].children[0]); // header, extract innerHTML and if editable
-	console.log(storeRaw.tabs[0].blocks[0].children[1]); // p, extract innerHTML
 	store.dispatch(saveStore());
-	// await download(storeFile, 'json.txt', 'text/plain');
+	let storeFile = JSON.stringify(store.getState().data);
+	await download(storeFile, 'json.txt', 'text/plain');
 });
 
 document.getElementById('moon').addEventListener('click', async () => {
@@ -169,6 +167,7 @@ dropArea.addEventListener('drop', event => {
 const fileSelector = document.getElementById('file-selector');
 fileSelector.addEventListener('change', event => {
 	const fileList = event.target.files;
+	// hide file selector afterwards
 	console.log(fileList);
 	console.log(fileList[0]);
 	readFile(fileList[0]);
@@ -180,12 +179,38 @@ function readFile(file) {
 		return;
 	}
 	const reader = new FileReader();
-	/* const test = document.getElementById('test');
 	reader.addEventListener('load', event => {
-		console.log(event.target.result);
-		test.innerText = event.target.result;
+		let rawData = JSON.parse(event.target.result);
+		// create tabs
+		let newDataTabs = rawData.tabs.map(tab => {
+			createTab(null, tab.id, tab.name);
+			let blocks = tab.blocks.map(block => createGrabbable(null, block.headerText, block.pText, block.id, block.headerEditable, block.transform));
+			let connections = tab.connections.map(con => {
+				let line = new LeaderLine(document.getElementById(con.start), document.getElementById(con.end), {hide: true});
+				return line;
+			});
+			return {
+				id: tab.id,
+				name: tab.name,
+				blocks: blocks,
+				connections: connections
+			}
+		});
+		let newStore = {
+			activeTab: rawData.activeTab,
+			name: rawData.name,
+			tabs: newDataTabs,
+			blockId: rawData.blockId
+		};
+		let activeTabIndex = newStore.tabs.findIndex(tab => tab.id === newStore.activeTab);
+		newStore.tabs[activeTabIndex].connections.forEach(con => con.show());
+		newStore.tabs[activeTabIndex].blocks.forEach(block => block.classList.toggle('hidden'));
+		console.log(JSON.parse(event.target.result))
+		console.log(newStore)
+		store.dispatch(loadStore(newStore));
+		// show add_grabbable
+		// then push state to redux
 	});
-	*/
 	reader.readAsText(file);
 }
 
@@ -195,15 +220,20 @@ const add_grabbable = document.getElementById("add_grabbable");
 // ADD TAB //
 const header = document.getElementById('header');
 const add_tab = document.getElementById('add_tab');
-add_tab.addEventListener('click', event => {
-	let id = uuidv4();
+
+let createTab = (event = null, tabId = null, name = 'Name') => {
+	if (event) {
+		if (store.getState().tabs.length === 9) return;
+	}
+	let id = tabId ? tabId : uuidv4();
 	let newTab = document.createElement('div');
 	let newTabDiv = document.createElement('div');
 	let newTabClose = document.createElement('button');
-	let newTabName = document.createTextNode('Name');
+	let newTabName = document.createTextNode(name);
 	let newTabCloseX = document.createTextNode('X');
 	newTabDiv.appendChild(newTabName);
 	newTabClose.appendChild(newTabCloseX);
+	// make tab name uneditable after loading state
 	newTabDiv.setAttribute('contentEditable', 'true');
 	newTabDiv.addEventListener('keydown', event => {
 		if (event.key === "Enter") {
@@ -222,9 +252,10 @@ add_tab.addEventListener('click', event => {
 	add_tab.before(newTab);
 	newTab.prepend(newTabDiv);
 	newTab.append(newTabClose);
-	store.dispatch(addTab({ id: id, name: "Name" }));
+	if (event) store.dispatch(addTab({ id: id, name: "Name" }));
 	add_grabbable.classList.remove('hidden');
-});
+}
+add_tab.addEventListener('click', createTab);
 
 // SWITCH TABS by capturing CTRL+NUMBER //
 document.addEventListener('keydown', event => {
@@ -240,29 +271,31 @@ document.addEventListener('keydown', event => {
 let start = null;
 let end = null;
 let grabbable_id = 0;
-add_grabbable.addEventListener('click', event => {
+let createGrabbable = (event = null, headerText = 'Click here to move', pText = 'Move', id = undefined, headerEditable = 'true', transform = null) => {
 	let newGrabbable = document.createElement('div');
 	let newGrabbableHeader = document.createElement('div');
 	let newGrabbableP = document.createElement('p');
-	// if p is too big, shorten it. on focus show all
 	let newAddLine = document.createElement('button');
-	let newHeaderText = document.createTextNode('Click here to move');
-	let newPText = document.createTextNode('Move');
+	let newHeaderText = document.createTextNode(headerText);
+	let newPText = document.createTextNode(pText);
 	let newLineText = document.createTextNode('→');
 	newGrabbableHeader.appendChild(newHeaderText);
 	newGrabbableP.appendChild(newPText);
 	newAddLine.appendChild(newLineText);
 	newGrabbableP.setAttribute('contentEditable', 'true');
+	// fix the p text, if there's multiple paragraphs, it creates divs
+	// replace innerHTML with innerText
+	// do something with \n
+	// if p is too big, shorten it. on focus show all
 	/* newGrabbableP.addEventListener('focusout', event => {
 		send redux action
 	})
 	*/
-	newGrabbableHeader.setAttribute('contentEditable', 'true');
+	newGrabbableHeader.setAttribute('contentEditable', headerEditable);
 	newGrabbableHeader.addEventListener('keydown', event => {
 		if (event.key === "Enter") {
 			event.preventDefault();
 			newGrabbableHeader.setAttribute('contentEditable', 'false');
-			// send redux action
 		}
 	});
 	newGrabbable.classList.add('grabbable');
@@ -274,6 +307,8 @@ add_grabbable.addEventListener('click', event => {
 	draggable = new PlainDraggable(newGrabbable);
 	draggable.handle = newGrabbableHeader;
 	draggable.containment = {left: 0, top: 30, width: '100%', height: '100%'};
+	// set transform
+	if (transform) newGrabbable.style.transform = transform;
 	console.log(newGrabbable);
 	console.log(draggable);
 
@@ -285,13 +320,23 @@ add_grabbable.addEventListener('click', event => {
 		} else if (start !== newGrabbable && !end) {
 			end = newGrabbable;
 			let line = new LeaderLine(start, end);
-			// adding non-serializable value to state; rework if possible
 			store.dispatch(addConnection(line));
 			start = null;
 			end = null;
 		}
 	});
-	newGrabbable.id = grabbable_id;
-	grabbable_id++;
-	store.dispatch(addBlock(newGrabbable));
-});
+	// check for string, should be number newGrabbable.id = id;
+	if (id === undefined) {
+		newGrabbable.id = store.getState().blockId;
+		store.dispatch(increaseBlockId());
+	} else {
+		newGrabbable.id = id
+	}
+	if (!event) {
+		newGrabbable.classList.toggle('hidden');
+		return newGrabbable;
+	} else {
+		store.dispatch(addBlock(newGrabbable));
+	}
+};
+add_grabbable.addEventListener('click', createGrabbable);

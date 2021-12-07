@@ -243,9 +243,6 @@ let createGrabbable = (event = null, headerText = 'Click here to move', pText = 
 	}
 	newAddLine.appendChild(newLineText);
 	newGrabbableP.setAttribute('contentEditable', 'true');
-	// fix the p text, if there's multiple paragraphs, it creates divs
-	// replace innerHTML with innerText
-	// do something with \n
 	// if p is too big, shorten it. on focus show all
 	/* newGrabbableP.addEventListener('focusout', event => {
 		send redux action

@@ -18,7 +18,6 @@ const initialState = {
 const tabs = RTK.createReducer(initialState, (builder) => {
 	builder
 		.addCase('ADD_TAB', (state, action) => {
-			console.log(action);
 			if (state.tabs.length === 0) state.activeTab = action.payload.id;
 			let testTab = {
 				id: action.payload.id,
@@ -26,31 +25,18 @@ const tabs = RTK.createReducer(initialState, (builder) => {
 				blocks: [],
 				connections: [],
 			};
-			console.log('before', RTK.current(state));
 			state.tabs.push(testTab);
 			// change css of active tab
-			console.log('after', RTK.current(state));
 		})
 		.addCase('REMOVE_TAB', (state, action) => {
-			console.log(action);
-			console.log('before', RTK.current(state));
-			// check for active tab
-			// if no tabs left, do something (hide 'add block' button)
 			let foundIndex = state.tabs.findIndex(tab => tab.id === action.payload);
 			state.tabs.splice(foundIndex, 1);
-			console.log('after', RTK.current(state));
 		})
 		.addCase('RENAME_TAB', (state, action) => {
-			console.log(action.payload);
-			console.log(RTK.current(state.tabs));
-			console.log('before', RTK.current(state));
 			let found = state.tabs.find(tab => tab.id === action.payload.id);
 			found.name = action.payload.name;
-			console.log('after', RTK.current(state));
 		})
 		.addCase('SWITCH_TAB', (state, action) => {
-			console.log(action.payload);
-			console.log('before', RTK.current(state));
 			let newIndex = action.payload;
 			let oldIndex = state.tabs.findIndex(tab => tab.id === state.activeTab);
 			if (newIndex === oldIndex) return;
@@ -60,32 +46,17 @@ const tabs = RTK.createReducer(initialState, (builder) => {
 			state.activeTab = newTabId;
 			state.tabs[newIndex].connections.forEach(con => con.show());
 			state.tabs[newIndex].blocks.forEach(block => block.classList.toggle('hidden'));
-			console.log('after', RTK.current(state));
 		})
 		.addCase('ADD_CONNECTION', (state, action) => {
-			console.log(action.payload);
-			console.log('before', RTK.current(state));
 			let foundIndex = state.tabs.findIndex(tab => tab.id === state.activeTab);
 			state.tabs[foundIndex].connections.push(action.payload);
-			console.log('after', RTK.current(state));
 		})
 		.addCase('ADD_BLOCK', (state, action) => {
-			console.log(action.payload);
-			console.log('before', RTK.current(state));
 			let foundIndex = state.tabs.findIndex(tab => tab.id === state.activeTab);
-			console.log(foundIndex);
-			console.log(state.tabs[foundIndex]);
 			state.tabs[foundIndex].blocks.push(action.payload);
-			console.log('after', RTK.current(state));
 		})
-		.addCase('LOAD_STORE', (state, action) => {
-			console.log(action.payload);
-			console.log('before', RTK.current(state));
-			return action.payload;
-		})
+		.addCase('LOAD_STORE', (state, action) => action.payload)
 		.addCase('SAVE_STORE', (state, action) => {
-			console.log(action.payload);
-			console.log('before', RTK.current(state));
 			let tabs = state.tabs;
 			let data_tabs = tabs.map(tab => {
 				let connections = tab.connections.map(con => {
@@ -116,21 +87,15 @@ const tabs = RTK.createReducer(initialState, (builder) => {
 				activeTab: state.activeTab,
 				blockId: state.blockId
 			};
-			console.log('after', RTK.current(state));
+			console.log(RTK.current(state));
 		})
 		.addCase('INCREASE_BLOCK_ID', (state, action) => {
 			state.blockId++
 		})
 });
 const store = RTK.configureStore({ reducer: tabs });
-// const test = store.getState();
 
-/* var data = {
-	a: "123",
-	b: "test"
-}
-var jsonData = JSON.stringify(data);
-*/
+
 function download(content, fileName, contentType) {
 	var a = document.createElement("a");
 	var file = new Blob([content], {type: contentType});
@@ -168,8 +133,6 @@ const fileSelector = document.getElementById('file-selector');
 fileSelector.addEventListener('change', event => {
 	const fileList = event.target.files;
 	// hide file selector afterwards
-	console.log(fileList);
-	console.log(fileList[0]);
 	readFile(fileList[0]);
 });
 
@@ -181,7 +144,7 @@ function readFile(file) {
 	const reader = new FileReader();
 	reader.addEventListener('load', event => {
 		let rawData = JSON.parse(event.target.result);
-		// create tabs
+		console.log(rawData);
 		let newDataTabs = rawData.tabs.map(tab => {
 			createTab(null, tab.id, tab.name);
 			let blocks = tab.blocks.map(block => createGrabbable(null, block.headerText, block.pText, block.id, block.headerEditable, block.transform));
@@ -205,11 +168,7 @@ function readFile(file) {
 		let activeTabIndex = newStore.tabs.findIndex(tab => tab.id === newStore.activeTab);
 		newStore.tabs[activeTabIndex].connections.forEach(con => con.show());
 		newStore.tabs[activeTabIndex].blocks.forEach(block => block.classList.toggle('hidden'));
-		console.log(JSON.parse(event.target.result))
-		console.log(newStore)
 		store.dispatch(loadStore(newStore));
-		// show add_grabbable
-		// then push state to redux
 	});
 	reader.readAsText(file);
 }
@@ -246,8 +205,7 @@ let createTab = (event = null, tabId = null, name = 'Name') => {
 	newTabClose.addEventListener('click', event => {
 		store.dispatch(removeTab(id));
 		newTab.remove();
-		// if no tabs left, make add_grabbable hidden
-		// add_grabbable.classList.add('hidden');
+		if (store.getState().tabs.length === 0) add_grabbable.classList.add('hidden');
 	});
 	add_tab.before(newTab);
 	newTab.prepend(newTabDiv);
@@ -260,7 +218,6 @@ add_tab.addEventListener('click', createTab);
 // SWITCH TABS by capturing CTRL+NUMBER //
 document.addEventListener('keydown', event => {
 	if (event.ctrlKey && event.keyCode >= 48 && event.keyCode <= 57) {
-		console.log(event.key);
 		let state = store.getState();
 		if (state.tabs.length === 0) return;
 		store.dispatch(switchTab(event.keyCode - 49))
@@ -270,7 +227,6 @@ document.addEventListener('keydown', event => {
 // ADD GRABBABLE //
 let start = null;
 let end = null;
-let grabbable_id = 0;
 let createGrabbable = (event = null, headerText = 'Click here to move', pText = 'Move', id = undefined, headerEditable = 'true', transform = null) => {
 	let newGrabbable = document.createElement('div');
 	let newGrabbableHeader = document.createElement('div');
@@ -280,7 +236,11 @@ let createGrabbable = (event = null, headerText = 'Click here to move', pText = 
 	let newPText = document.createTextNode(pText);
 	let newLineText = document.createTextNode('→');
 	newGrabbableHeader.appendChild(newHeaderText);
-	newGrabbableP.appendChild(newPText);
+	if (pText === 'Move') {
+		newGrabbableP.appendChild(newPText);
+	} else {
+		newGrabbableP.innerHTML = pText;
+	}
 	newAddLine.appendChild(newLineText);
 	newGrabbableP.setAttribute('contentEditable', 'true');
 	// fix the p text, if there's multiple paragraphs, it creates divs
@@ -307,11 +267,7 @@ let createGrabbable = (event = null, headerText = 'Click here to move', pText = 
 	draggable = new PlainDraggable(newGrabbable);
 	draggable.handle = newGrabbableHeader;
 	draggable.containment = {left: 0, top: 30, width: '100%', height: '100%'};
-	// set transform
 	if (transform) newGrabbable.style.transform = transform;
-	console.log(newGrabbable);
-	console.log(draggable);
-
 	// add draggable lead line positioning on move
 	// make editable labels
 	newAddLine.addEventListener('click', event => {
@@ -325,7 +281,6 @@ let createGrabbable = (event = null, headerText = 'Click here to move', pText = 
 			end = null;
 		}
 	});
-	// check for string, should be number newGrabbable.id = id;
 	if (id === undefined) {
 		newGrabbable.id = store.getState().blockId;
 		store.dispatch(increaseBlockId());
